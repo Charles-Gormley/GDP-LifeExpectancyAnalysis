@@ -40,7 +40,7 @@ df_final <- rename(df_final, country = "Country",
 df_final <- na.omit(df_final)
 
 # Sorting Values
-df_final <- arrange(df_final, life_expectancy, ascending=FALSE)[nrow(df_final):1, ]
+df_final <- df_final %>% arrange(desc(life_expectancy))
 df_final
 
 

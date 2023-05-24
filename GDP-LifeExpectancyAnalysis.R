@@ -5,12 +5,14 @@ setwd("C:/Users/Charl/OneDrive/Documents/Education/Drexel/du_term_spring_23/INFO
 library(dplyr)
 library(ggplot2)
 library(ggrepel)
+library(purrr)
+library(ggplot2)
 
 spending <- read.csv("healthcare_spending.csv")
 expectancy <- read.csv("life_expectancy.csv")
 country_codes <- read.csv("country_codes.csv")
 
-######################## Task 1 ################################################
+######################## Creation Of Dataset ################################################
 # Select only year 2018 in all databases
 spending <- filter(spending, TIME == 2018)
 expectancy <- filter(expectancy, TIME == 2018)
@@ -43,13 +45,39 @@ df_final <- na.omit(df_final)
 df_final <- df_final %>% arrange(desc(life_expectancy))
 df_final
 
+######################## Preparation of Data ################################################
+# Selecting Columns to be clustered
+df_cluster <- df_final %>% select(spending_pct_gdp, life_expectancy)
 
+# Normalizing Data for clusterization
+df_cluster <- scale(df_cluster[, c("spending_pct_gdp", "life_expectancy")])
 
-######################## Task 2 ################################################
-library(ggplot2)
-plt <- ggplot(data=df_final, aes(x= spending_pct_gdp, y=life_expectancy)) + geom_point() 
+######################## Cluster Analysis: Elbow Method for Optimal K. ################################################
+# K-Means Elbow Analysis
+tot_withinss <- map_dbl(1:10,  function(k){
+  model <- kmeans(x = df_cluster, centers = k)
+  model$tot.withinss})
+
+# Generate a data frame containing both k and tot_withinss
+elbow_df <- data.frame(
+  k = 1:10,
+  tot_withinss = tot_withinss
+)
+
+ggplot(elbow_df, aes(x = k, y = tot_withinss)) +
+  geom_line() +
+  scale_x_continuous(breaks = 1:10)
+# Analysis: Seems as if the elbow point is 5. 5 will be our optimal k.
+
+######################## Creating Cluster Data Frame with optimal k=5 ################################################
+cluster_result <- kmeans(df_cluster, centers=5)
+cluster_labels <- cluster_result$cluster
+df_final$cluster_labels <- cluster_labels
+
+######################## New Plot with Cluster Colors ################################################
+plt <- ggplot(data=df_final, aes(x= spending_pct_gdp, y=life_expectancy, color = factor(cluster_labels))) + geom_point() 
 plt <- plt + xlab("Healthcare Spending (% GDP)") + ylab("Life Expectancy(years)")
-plt <- plt
-plt <- plt + geom_text_repel(aes(label = country), size=1, max.overlaps=20)
+plt <- plt + geom_text_repel(aes(label = country), size=3, max.overlaps=20)
+plt <- plt + scale_color_discrete()
 plt
 
